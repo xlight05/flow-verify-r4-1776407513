@@ -1,6 +1,7 @@
 /bin/
 /out/
 /data/
+todo-api
 *.exe
 *.test
 *.out

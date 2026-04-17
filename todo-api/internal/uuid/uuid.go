@@ -4,7 +4,15 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"regexp"
 )
+
+var uuidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
+// Valid reports whether s is a syntactically valid UUID string.
+func Valid(s string) bool {
+	return uuidRegex.MatchString(s)
+}
 
 // New returns an RFC 4122 version 4 UUID string.
 func New() (string, error) {
