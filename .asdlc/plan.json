@@ -1,0 +1,36 @@
+{
+  "strategy": "Single-Phase",
+  "overview": "Single independent component with no dependencies, so it is implemented in a single foundational phase.",
+  "phases": [
+    {
+      "phase": 1,
+      "name": "Foundation Service",
+      "description": "Implement the standalone Go todo API service which has no dependencies.",
+      "components": [
+        {
+          "name": "todo-api",
+          "componentType": "service",
+          "language": "Go",
+          "deployment": "Docker",
+          "responsibilities": [
+            "Expose REST endpoints for todo CRUD and completion",
+            "Authenticate bearer tokens and enforce ownership-based authorization",
+            "Persist todos atomically with safe concurrent access",
+            "Emit structured logs and Prometheus metrics",
+            "Serve OpenAPI-documented endpoints including PATCH /todos/{id}/complete"
+          ],
+          "architectureContext": "Sole backend service handling HTTP/JSON traffic from clients directly. No upstream/downstream services; in-process in-memory store with JSON file persistence.",
+          "keyConsiderations": [
+            "Use sync.RWMutex for concurrency and write-then-rename for atomic durability",
+            "Validate UUID format for id path param; return structured error bodies",
+            "Ensure PATCH is idempotent for already-completed todos",
+            "Do not log tokens or titles; include todo_id, user_id, status, latency_ms",
+            "Multi-stage Docker build on Go 1.22 with distroless final image, EXPOSE 9090"
+          ],
+          "apiContract": "openapi: 3.0.3\ninfo:\n  title: Todo API\n  version: 1.0.0\npaths:\n  /health:\n    get:\n      responses:\n        '200':\n          description: OK\n  /todos:\n    get:\n      security: [{bearerAuth: []}]\n      responses:\n        '200':\n          description: List\n          content:\n            application/json:\n              schema:\n                type: array\n                items: {$ref: '#/components/schemas/Todo'}\n    post:\n      security: [{bearerAuth: []}]\n      requestBody:\n        required: true\n        content:\n          application/json:\n            schema: {$ref: '#/components/schemas/TodoCreate'}\n      responses:\n        '201':\n          description: Created\n          content:\n            application/json:\n              schema: {$ref: '#/components/schemas/Todo'}\n  /todos/{id}:\n    get:\n      security: [{bearerAuth: []}]\n      parameters:\n        - name: id\n          in: path\n          required: true\n          schema: {type: string}\n      responses:\n        '200':\n          description: OK\n          content:\n            application/json:\n              schema: {$ref: '#/components/schemas/Todo'}\n        '404': {$ref: '#/components/responses/NotFound'}\n  /todos/{id}/complete:\n    patch:\n      summary: Mark a todo as completed\n      security: [{bearerAuth: []}]\n      parameters:\n        - name: id\n          in: path\n          required: true\n          schema: {type: string, format: uuid}\n      responses:\n        '200':\n          description: Todo marked completed\n          content:\n            application/json:\n              schema: {$ref: '#/components/schemas/Todo'}\n              examples:\n                success:\n                  value: {id: '3f1c...', title: 'Buy milk', completed: true, completedAt: '2026-04-17T10:00:00Z'}\n        '400': {$ref: '#/components/responses/BadRequest'}\n        '401': {$ref: '#/components/responses/Unauthorized'}\n        '403': {$ref: '#/components/responses/Forbidden'}\n        '404': {$ref: '#/components/responses/NotFound'}\n        '500': {$ref: '#/components/responses/ServerError'}\ncomponents:\n  securitySchemes:\n    bearerAuth:\n      type: http\n      scheme: bearer\n  schemas:\n    Todo:\n      type: object\n      properties:\n        id: {type: string, format: uuid}\n        title: {type: string}\n        completed: {type: boolean}\n        completedAt: {type: string, format: date-time, nullable: true}\n        ownerId: {type: string}\n    TodoCreate:\n      type: object\n      required: [title]\n      properties:\n        title: {type: string}\n    Error:\n      type: object\n      properties:\n        code: {type: string}\n        message: {type: string}\n  responses:\n    BadRequest:\n      description: Bad Request\n      content:\n        application/json:\n          schema: {$ref: '#/components/schemas/Error'}\n    Unauthorized:\n      description: Unauthorized\n      content:\n        application/json:\n          schema: {$ref: '#/components/schemas/Error'}\n    Forbidden:\n      description: Forbidden\n      content:\n        application/json:\n          schema: {$ref: '#/components/schemas/Error'}\n    NotFound:\n      description: Not Found\n      content:\n        application/json:\n          schema: {$ref: '#/components/schemas/Error'}\n    ServerError:\n      description: Server Error\n      content:\n        application/json:\n          schema: {$ref: '#/components/schemas/Error'}\n",
+          "dependencies": []
+        }
+      ]
+    }
+  ]
+}
