@@ -1,0 +1,11 @@
+/bin/
+/out/
+/data/
+*.exe
+*.test
+*.out
+.DS_Store
+.idea/
+.vscode/
+.logs/
+.mcp-config.json
