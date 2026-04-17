@@ -1,0 +1,36 @@
+{
+  "strategy": "Single-Phase",
+  "overview": "Single independent Go service with no dependencies, so all work happens in one phase. Building the todo-api service covers persistence, HTTP handlers, and health checks in one cohesive unit.",
+  "phases": [
+    {
+      "phase": 1,
+      "name": "Foundation Service",
+      "description": "Implement the sole todo-api service which has no dependencies.",
+      "components": [
+        {
+          "name": "todo-api",
+          "componentType": "service",
+          "language": "Go",
+          "deployment": "Docker",
+          "responsibilities": [
+            "Expose REST endpoints to list, create, and delete todos",
+            "Persist todos to a JSON file with atomic writes",
+            "Guard concurrent access via sync.RWMutex and generate unique UUIDs",
+            "Provide /health endpoint and structured request/error logging",
+            "Return proper HTTP status codes and JSON content types"
+          ],
+          "architectureContext": "Standalone HTTP service on port 9090 serving external clients directly. No upstream or downstream services; only dependency is the local filesystem volume for JSON persistence.",
+          "keyConsiderations": [
+            "Use atomic file writes (temp file + os.Rename) to prevent corruption",
+            "RWMutex to safely handle 50+ concurrent requests without duplicate IDs",
+            "Recover middleware for panics returning 500 with logging",
+            "Method-not-allowed responses must include Allow header",
+            "Default TODO_DATA_FILE to /data/todos.json and create dir if missing"
+          ],
+          "apiContract": "openapi: 3.0.3\ninfo:\n  title: Todo API\n  version: 1.0.0\n  description: Minimal REST API for managing todos.\nservers:\n  - url: http://localhost:9090\npaths:\n  /health:\n    get:\n      summary: Health check\n      responses:\n        '200':\n          description: OK\n          content:\n            application/json:\n              schema:\n                type: object\n                properties:\n                  status: { type: string }\n  /todos:\n    get:\n      summary: List todos\n      responses:\n        '200':\n          description: Array of todos\n          content:\n            application/json:\n              schema:\n                type: array\n                items: { $ref: '#/components/schemas/Todo' }\n    post:\n      summary: Create todo\n      requestBody:\n        required: true\n        content:\n          application/json:\n            schema:\n              type: object\n              required: [title]\n              properties:\n                title: { type: string }\n      responses:\n        '201':\n          description: Created\n          content:\n            application/json:\n              schema: { $ref: '#/components/schemas/Todo' }\n        '400':\n          description: Bad request\n          content:\n            application/json:\n              schema: { $ref: '#/components/schemas/Error' }\n  /todos/{id}:\n    delete:\n      summary: Delete todo\n      parameters:\n        - in: path\n          name: id\n          required: true\n          schema: { type: string }\n      responses:\n        '204': { description: Deleted }\n        '404':\n          description: Not found\n          content:\n            application/json:\n              schema: { $ref: '#/components/schemas/Error' }\ncomponents:\n  schemas:\n    Todo:\n      type: object\n      properties:\n        id: { type: string }\n        title: { type: string }\n        completed: { type: boolean }\n        createdAt: { type: string, format: date-time }\n    Error:\n      type: object\n      properties:\n        message: { type: string }\n",
+          "dependencies": []
+        }
+      ]
+    }
+  ]
+}
