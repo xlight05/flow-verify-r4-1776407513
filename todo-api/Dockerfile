@@ -2,20 +2,20 @@
 
 FROM golang:1.22-alpine AS builder
 WORKDIR /src
-COPY go.mod ./
+COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/todo-api .
 
-FROM alpine:3.20
-RUN apk add --no-cache ca-certificates tzdata && \
-    addgroup -S app && adduser -S -G app app && \
-    mkdir -p /data && chown -R app:app /data
-WORKDIR /app
+# Prepare a writable /data owned by the distroless nonroot user (65532).
+FROM alpine:3.20 AS prep
+RUN mkdir -p /data && chown -R 65532:65532 /data
+
+FROM gcr.io/distroless/static:nonroot
 COPY --from=builder /out/todo-api /app/todo-api
+COPY --from=prep --chown=65532:65532 /data /data
 ENV TODO_DATA_FILE=/data/todos.json \
     PORT=9090
-VOLUME ["/data"]
 EXPOSE 9090
-USER app:app
+USER nonroot:nonroot
 ENTRYPOINT ["/app/todo-api"]
